@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Viewport optimized for Android WebView -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Pro HTML Runner Optimized</title>
+
+    <!-- CodeMirror Assets -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #6200EE;
+            --bg: #F5F5F5;
+            --surface: #FFFFFF;
+            --border: #E0E0E0;
+        }
+
+        /* --- GLOBAL RESET & OPTIMIZATION --- */
+        * {
+            box-sizing: border-box;
+            outline: none;
+            /* Removes the blue highlight box on tap */
+            -webkit-tap-highlight-color: transparent;
+            /* Prevents text selection on UI elements */
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation; /* Improves touch response */
+        }
+
+        html, body {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            background-color: var(--bg);
+            overflow: hidden;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .app-container {
+            display: flex; flex-direction: column;
+            height: 100vh; width: 100vw;
+        }
+
+        /* --- HEADER --- */
+        .app-bar {
+            flex: 0 0 50px;
+            background: var(--surface);
+            display: flex; align-items: center;
+            padding: 0 10px;
+            border-bottom: 1px solid var(--border);
+            z-index: 10;
+        }
+
+        .tabs-wrapper {
+            flex: 1; display: flex; overflow-x: auto;
+            scrollbar-width: none; align-items: center;
+        }
+        .tabs-wrapper::-webkit-scrollbar { display: none; }
+
+        .tab-chip {
+            background: #EEEEEE; padding: 6px 14px; margin-right: 6px;
+            border-radius: 20px; font-size: 13px; color: #444;
+            white-space: nowrap; cursor: pointer;
+            border: 1px solid transparent;
+            transition: background 0.2s;
+        }
+        .tab-chip.active {
+            background: #E8EAF6; color: var(--primary);
+            border-color: #C5CAE9; font-weight: 600;
+        }
+        .add-icon {
+            font-size: 24px; padding: 0 10px; color: var(--primary);
+            background: none; border: none; cursor: pointer;
+        }
+
+        /* --- EDITOR AREA --- */
+        #editor-area {
+            flex: 1; position: relative; overflow: hidden;
+            background: var(--surface);
+        }
+        
+        /* CodeMirror Specifics for Mobile */
+        .CodeMirror {
+            height: 100% !important;
+            width: 100% !important;
+            font-size: 14px;
+            font-family: 'Fira Code', monospace;
+            line-height: 1.5;
+            /* Allows text selection inside editor only */
+            -webkit-user-select: text !important;
+            user-select: text !important;
+        }
+        /* Fixes jumpy scrolling on some devices */
+        .CodeMirror-scroll {
+            padding-bottom: 80px; /* Space for run button */
+        }
+
+        /* --- RUN BUTTON --- */
+        .run-btn {
+            position: absolute; bottom: 25px; right: 25px;
+            width: 55px; height: 55px;
+            background: var(--primary);
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: none; color: white;
+            display: flex; justify-content: center; align-items: center;
+            z-index: 20; cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .run-btn:active { transform: scale(0.95); }
+        .run-btn svg { width: 28px; height: 28px; fill: white; margin-left: 3px; }
+
+        /* --- BOTTOM TOOLS --- */
+        .bottom-tools {
+            flex: 0 0 50px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            display: flex; justify-content: space-evenly; align-items: center;
+            z-index: 10;
+        }
+        .tool-btn {
+            background: none; border: none; padding: 10px;
+            color: #666; cursor: pointer; opacity: 0.8;
+        }
+        .tool-btn:active { opacity: 1; color: var(--primary); }
+        .tool-btn svg { width: 22px; height: 22px; fill: currentColor; }
+
+        /* --- RUN OVERLAY --- */
+        #run-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: white; z-index: 9999;
+            display: none;
+        }
+        iframe { border: none; width: 100%; height: 100%; display: block; background: #fff; }
+
+        /* Handle */
+        .menu-trigger-zone {
+            position: absolute; top: 0; left: 0; width: 100%; height: 35px;
+            z-index: 10000; display: flex; justify-content: center;
+        }
+        .menu-handle {
+            width: 80px; height: 20px;
+            background: rgba(0,0,0,0.1);
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .handle-bar { width: 30px; height: 4px; background: rgba(0,0,0,0.2); border-radius: 2px; }
+
+        /* Panel */
+        .backdrop { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; display:none; }
+        .control-panel {
+            position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 350px; background: white;
+            padding: 15px; border-radius: 12px; display: none; flex-direction: column; gap: 10px;
+            z-index: 10001; box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+        }
+        .control-panel.show { display: flex; }
+
+        .c-btn {
+            padding: 12px; border: none; border-radius: 6px;
+            font-size: 14px; font-weight: 500; width: 100%;
+        }
+        .btn-row { display: flex; gap: 10px; }
+        .bg-con { background: #E3F2FD; color: #1565C0; flex: 1; }
+        .bg-exit { background: #FFEBEE; color: #C62828; flex: 1; }
+        
+        select { padding: 10px; border-radius: 6px; border: 1px solid #ddd; width: 100%; background: #fff; }
+        #console-box { background: #222; color: #0f0; padding: 10px; height: 100px; overflow-y: auto; font-size: 11px; border-radius: 6px; display: none; }
+
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- HEADER -->
+        <div class="app-bar">
+            <div class="tabs-wrapper" id="tabs-container"></div>
+            <button class="add-icon" onclick="addNewTab()">+</button>
+        </div>
+
+        <!-- EDITOR -->
+        <div id="editor-area">
+            <textarea id="code-editor"></textarea>
+            <button class="run-btn" onclick="startRun()">
+                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+        </div>
+
+        <!-- FOOTER TOOLS -->
+        <div class="bottom-tools">
+            <button class="tool-btn" onclick="exec('selectAll')"><svg viewBox="0 0 24 24"><path d="M7 15h7v2H7zm0-4h10v2H7zm0-4h10v2H7zm-2 16c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H5zm0-2h14V5H5v14z"/></svg></button>
+            <button class="tool-btn" onclick="copy()"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+            <button class="tool-btn" onclick="paste()"><svg viewBox="0 0 24 24"><path d="M19 2h-4.18C14.4.84 13.3 0 12 0c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm7 18H5V4h2v3h10V4h2v16z"/></svg></button>
+            <button class="tool-btn" onclick="clearCode()"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+        </div>
+    </div>
+
+    <!-- FULL SCREEN RUNNER -->
+    <div id="run-overlay">
+        <div class="menu-trigger-zone" onclick="toggleMenu(true)">
+            <div class="menu-handle"><div class="handle-bar"></div></div>
+        </div>
+
+        <iframe id="output-frame"></iframe>
+        
+        <div class="backdrop" id="backdrop" onclick="toggleMenu(false)"></div>
+
+        <div class="control-panel" id="c-panel">
+            <div style="text-align:center; font-weight:bold; color:#444; margin-bottom:5px;">Runner Options</div>
+            <select id="tab-list" onchange="runTab(this.value)"></select>
+            <div class="btn-row">
+                <button class="c-btn bg-con" onclick="toggleConsole()">Console</button>
+                <button class="c-btn bg-exit" onclick="closeRun()">EXIT</button>
+            </div>
+            <div id="console-box"></div>
+        </div>
+    </div>
+
+    <script>
+        let tabs = [], activeId = 1, editor;
+
+        window.onload = function() {
+            // OPTIMIZED EDITOR SETUP
+            editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+                mode: "htmlmixed",
+                lineNumbers: true,
+                theme: "default",
+                lineWrapping: true,
+                inputStyle: "textarea", // IMPORTANT: Better for mobile selection than contenteditable
+                viewportMargin: 20 // Optimizes rendering for speed
+            });
+
+            // DEBOUNCED SAVE (Performance Fix)
+            let saveTimeout;
+            editor.on("change", () => {
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    let t = tabs.find(x => x.id == activeId);
+                    if(t) { 
+                        t.code = editor.getValue(); 
+                        localStorage.setItem('optRunner', JSON.stringify(tabs)); 
+                    }
+                }, 500); // Wait 500ms before saving to reduce lag
+            });
+
+            loadTabs();
+        }
+
+        function loadTabs() {
+            let d = localStorage.getItem('optRunner');
+            tabs = d ? JSON.parse(d) : [{id:1, name:'File 1', code:''}];
+            if(tabs.length === 0) tabs = [{id:1, name:'File 1', code:''}];
+            activeId = tabs[0].id;
+            renderTabs();
+            // Set content and refresh to fix visual glitches
+            editor.setValue(tabs[0].code);
+            setTimeout(() => editor.refresh(), 50);
+        }
+
+        function addNewTab() {
+            let id = Date.now();
+            tabs.push({id, name: `File ${tabs.length+1}`, code: ''});
+            switchTab(id);
+        }
+
+        function switchTab(id) {
+            // Save current immediately before switch
+            let cur = tabs.find(x => x.id == activeId);
+            if(cur) cur.code = editor.getValue();
+
+            activeId = id;
+            let next = tabs.find(x => x.id == id);
+            editor.setValue(next ? next.code : "");
+            editor.clearHistory();
+            renderTabs();
+        }
+
+        function renderTabs() {
+            let h = '';
+            tabs.forEach(t => {
+                h += `<div class="tab-chip ${t.id==activeId?'active':''}" onclick="switchTab(${t.id})">
+                        ${t.name} <span style="margin-left:8px; opacity:0.6; font-size:16px" onclick="delTab(event,${t.id})">&times;</span>
+                      </div>`;
+            });
+            document.getElementById('tabs-container').innerHTML = h;
+        }
+
+        function delTab(e, id) {
+            e.stopPropagation();
+            if(tabs.length > 1) {
+                tabs = tabs.filter(t => t.id != id);
+                if(activeId == id) switchTab(tabs[0].id);
+                else renderTabs();
+                localStorage.setItem('optRunner', JSON.stringify(tabs));
+            }
+        }
+
+        // TOOLBAR ACTIONS
+        function exec(cmd) { 
+            editor.focus(); // Focus first ensures selection logic works
+            editor.execCommand(cmd); 
+        }
+        function copy() { 
+            let txt = editor.getValue();
+            if(!txt) return;
+            navigator.clipboard.writeText(txt);
+        }
+        function paste() { 
+            editor.focus();
+            navigator.clipboard.readText().then(t => editor.replaceSelection(t)); 
+        }
+        function clearCode() { 
+            if(confirm("Clear current code?")) editor.setValue(""); 
+        }
+
+        // RUNNER LOGIC
+        function startRun() {
+            document.getElementById('run-overlay').style.display = 'block';
+            let sel = document.getElementById('tab-list'); sel.innerHTML = "";
+            tabs.forEach(t => sel.innerHTML += `<option value="${t.id}" ${t.id==activeId?'selected':''}>${t.name}</option>`);
+            runTab(activeId);
+            
+            let el = document.documentElement;
+            if(el.requestFullscreen) el.requestFullscreen();
+        }
+
+        function runTab(id) {
+            let t = tabs.find(x=>x.id==id);
+            let frame = document.getElementById('output-frame');
+            document.getElementById('console-box').innerHTML = "";
+
+            let script = `<script>
+                window.onerror = function(m,u,l){ parent.postMessage({type:'err',m:m,l:l},'*'); };
+                const _l=console.log; console.log=function(...a){ parent.postMessage({type:'log',m:a.join(' ')},'*'); _l.apply(console,a); };
+            <\/script>`;
+            
+            let blob = new Blob([script + (t?t.code:'')], {type:'text/html'});
+            frame.src = URL.createObjectURL(blob);
+            toggleMenu(false);
+        }
+
+        function toggleMenu(s) {
+            document.getElementById('c-panel').className = s ? 'control-panel show' : 'control-panel';
+            document.getElementById('backdrop').style.display = s ? 'block' : 'none';
+        }
+
+        function closeRun() {
+            document.getElementById('run-overlay').style.display = 'none';
+            document.getElementById('output-frame').src = "about:blank";
+            if(document.exitFullscreen) document.exitFullscreen();
+        }
+
+        function toggleConsole() {
+            let b = document.getElementById('console-box');
+            b.style.display = b.style.display=='block'?'none':'block';
+        }
+
+        window.addEventListener('message', e => {
+            let b = document.getElementById('console-box');
+            let color = e.data.type === 'err' ? '#FF5252' : '#69F0AE';
+            b.innerHTML += `<div style="color:${color}; border-bottom:1px solid #333; padding:2px 0;">> ${e.data.m}</div>`;
+        });
+    </script>
+</body>
+</html>
